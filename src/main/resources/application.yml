@@ -1,7 +1,7 @@
 server:
   servlet:
     context-path: /customer
-  port: 8081
+  port: 8073
 resilience4j:
   circuitbreaker:
     instances:
@@ -40,4 +40,5 @@ eureka:
   instance:
     prefer-ip-address: true
     hostname: ${COMPUTERNAME:localhost}  
- 
+bank-api:
+  base-url: http://localhost:8080

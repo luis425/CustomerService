@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,6 +25,8 @@ import com.nttdata.Semana01.Customer.Entity.Customer;
 import com.nttdata.Semana01.Customer.Entity.CustomerType;
 import com.nttdata.Semana01.Customer.Service.CustomerService;
 import com.nttdata.Semana01.Customer.Service.CustomerTypeService;
+import com.nttdata.Semana01.Customer.response.BankResponse;
+import com.nttdata.Semana01.Customer.response.CustomerResponse;
 
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
@@ -75,7 +78,7 @@ public class CustomerController {
 
 			listCodeCustomerFlux.collectList().subscribe(listCustomerCode::addAll);
 
-			Mono<Bank> endpointResponse = bankServiceClient.get().uri("/bank/".concat(customer.getBank().getCode()))
+			/*Mono<Bank> endpointResponse = bankServiceClient.get().uri("/bank/".concat(customer.getBank().getCode()))
 					.accept(MediaType.APPLICATION_JSON).retrieve().bodyToMono(Bank.class).log().doOnError(ex -> {
 						throw new RuntimeException("the exception message is - " + ex.getMessage());
 					});
@@ -83,6 +86,9 @@ public class CustomerController {
 			List<Bank> listBank = new ArrayList<>();
 
 			endpointResponse.flux().collectList().subscribe(listBank::addAll);
+			*/
+			
+			BankResponse  endpointResponseBank = this.customerService.comunicationWebClientObtenerBankbyCodeResponse(customer.getBank().getCode());
 
 			Flux<Customer> listCustomerFlux = this.customerService.getAllCustomerByCode(customer.getCodeCustomer());
 
@@ -90,7 +96,7 @@ public class CustomerController {
 
 			listCustomerFlux.collectList().subscribe(listCustomer::addAll);
 
-			long temporizador = (7 * 1000);
+			long temporizador = (3 * 1000);
 
 			Thread.sleep(temporizador);
 
@@ -107,7 +113,8 @@ public class CustomerController {
 					long temporizador2 = (3 * 1000);
 					Thread.sleep(temporizador2);
 
-					codigoValidatorBank = this.validardorBank(listBank, customer);
+					//codigoValidatorBank = this.validardorBank(listBank, customer);
+					codigoValidatorBank = this.validardorBank(endpointResponseBank, customer);
 
 					log.info("Validar Codigo Repetido Banco --->" + codigoValidatorBank);
 
@@ -151,6 +158,9 @@ public class CustomerController {
 			throws InterruptedException {
 
 		List<Bank> listBank = new ArrayList<>();
+		
+		BankResponse endpointResponseBank = new BankResponse();
+		
 		List<CustomerType> listCustomerType = new ArrayList<>();
 
 		// Condicion para validar que no se puede actualizar el ID
@@ -183,6 +193,8 @@ public class CustomerController {
 						"El Atributo bank.code es necesario para cambiar el Bank de relacion."));
 			}
 
+			/*
+			
 			Mono<Bank> endpointResponse = bankServiceClient.get().uri("/bank/".concat(customer.getBank().getCode()))
 					.accept(MediaType.APPLICATION_JSON).retrieve().bodyToMono(Bank.class).log();
 
@@ -191,6 +203,9 @@ public class CustomerController {
 			long temporizador = (7 * 1000);
 
 			Thread.sleep(temporizador);
+			*/
+
+			endpointResponseBank = this.customerService.comunicationWebClientObtenerBankbyCodeResponse(customer.getBank().getCode());
 
 		}
 
@@ -214,7 +229,8 @@ public class CustomerController {
 
 			if (customer.getBank() != null) {
 
-				codigoValidatorBank = this.validardorBank(listBank, customer);
+				//codigoValidatorBank = this.validardorBank(listBank, customer);
+				codigoValidatorBank = this.validardorBank(endpointResponseBank, customer);
 
 				log.info("Validar Codigo Repetido Banco --->" + codigoValidatorBank);
 
@@ -290,7 +306,86 @@ public class CustomerController {
 		return Mono.just(ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(list))
 				.defaultIfEmpty(ResponseEntity.notFound().build());
 	}
+	
+	@GetMapping(value = "/customerbydniResponse/{dni}")
+	public Mono<ResponseEntity<CustomerResponse>> getCustomerByDNIResponse(@PathVariable String dni) {
 
+		try {
+
+			Flux<CustomerResponse> customerflux = this.customerService.getAllCustomerByDNIResponse(dni);
+
+			List<CustomerResponse> list1 = new ArrayList<>();
+
+			customerflux.collectList().subscribe(list1::addAll);
+
+			long temporizador = (5 * 1000);
+
+			Thread.sleep(temporizador);
+
+			if (list1.isEmpty()) {
+				return null;
+
+			} else {
+				return Mono.just(ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(list1.get(0)))
+						.defaultIfEmpty(ResponseEntity.notFound().build());
+			}
+
+		} catch (InterruptedException e) {
+			log.info(e.toString());
+			Thread.currentThread().interrupt();
+			return Mono.error(new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage()));
+		}
+	}
+	
+	@GetMapping(value = "/customerbydni/{dni}")
+	public Mono<ResponseEntity<Customer>> getCustomerByDNI(@PathVariable String dni) {
+
+		try {
+
+			Flux<Customer> customerflux = this.customerService.getAllCustomerByDNI(dni);
+
+			List<Customer> list1 = new ArrayList<>();
+
+			customerflux.collectList().subscribe(list1::addAll);
+
+			long temporizador = (5 * 1000);
+
+			Thread.sleep(temporizador);
+
+			if (list1.isEmpty()) {
+				return null;
+
+			} else {
+				return Mono.just(ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(list1.get(0)))
+						.defaultIfEmpty(ResponseEntity.notFound().build());
+			}
+
+		} catch (InterruptedException e) {
+			log.info(e.toString());
+			Thread.currentThread().interrupt();
+			return Mono.error(new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage()));
+		}
+	}
+	
+	@GetMapping(value = "/customerbyId/{id}")
+	public Mono<Customer> getCustomerById(@PathVariable String id) {
+		return this.customerService.getCustomerbyId(id); 
+	}
+	
+	@DeleteMapping("/{id}")
+	public Mono<ResponseEntity<Void>> deleteCustomerById(@PathVariable String id) {
+
+		try {
+			return this.customerService.deleteCustomer(id).map(r -> ResponseEntity.ok().<Void>build())
+					.defaultIfEmpty(ResponseEntity.notFound().build());
+
+		} catch (Exception e) {
+			log.info(e.toString());
+			return Mono.error(new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage()));
+		}
+
+	}
+	
 	public boolean validationRegisterCustomerRequest(Customer customer) {
 
 		boolean validatorcustomer;
@@ -335,18 +430,28 @@ public class CustomerController {
 		return validatorcustomer;
 	}
 
-	public String validardorBank(List<Bank> list1, Customer customer) {
-
-		if (list1.isEmpty()) {
+	//public String validardorBank(List<Bank> list1, Customer customer) {
+	public String validardorBank(BankResponse list1, Customer customer) { 
+		
+		//if (list1.isEmpty()) {
+		if (list1 == null) {
 			codigoValidatorBank = "";
 		} else {
-			codigoValidatorBank = list1.get(0).getCode();
+			
+			//codigoValidatorBank = list1.get(0).getCode();
+			
+			codigoValidatorBank = list1.getCode();
 
-			log.info("Validar listBank -->:" + list1.get(0).toString());
-			customer.getBank().setId(list1.get(0).getId());
-			customer.getBank().setCode(codigoValidatorBank);
-			customer.getBank().setBankName(list1.get(0).getBankName());
-			customer.getBank().setDirectionMain(list1.get(0).getDirectionMain());
+			log.info("Validar listBank -->:" + list1.getCode());
+			
+			customer.getBank().setId(list1.getId());
+			customer.getBank().setCode(list1.getCode());
+			customer.getBank().setBankName(list1.getBankName());
+			customer.getBank().setDirectionMain(list1.getDirectionMain());
+			//customer.getBank().setId(list1.get(0).getId());
+			//customer.getBank().setCode(codigoValidatorBank);
+			//customer.getBank().setBankName(list1.get(0).getBankName());
+			//customer.getBank().setDirectionMain(list1.get(0).getDirectionMain());
 
 		}
 
@@ -447,12 +552,6 @@ public class CustomerController {
 
 		return customer;
 	}
-
-	/*
-	 * public ResponseEntity<String> customerContacttoBank(Exception e) { return new
-	 * ResponseEntity<String>("GET: Bank endpoint is not available right now.",
-	 * HttpStatus.OK); }
-	 */
 
 	public Mono<Customer> customerContacttoBank(Throwable ex) { 
 		log.info("Message ---->" + ex.getMessage());
